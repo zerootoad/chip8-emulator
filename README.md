@@ -2,6 +2,8 @@
 
 Welcome to the **CHIP-8 Emulator** project! This emulator replicates the functionality of the CHIP-8 virtual machine, which was used in classic systems and is a popular starting point for emulator development. Below is a detailed explanation of the emulator, its capabilities, and how you can use it.
 
+![image](https://github.com/user-attachments/assets/02dac940-66f9-428d-b32c-6d4281e7a473) ![image](https://github.com/user-attachments/assets/0c9315d8-d23a-47b8-80b4-6affa6604884)
+
 ---
 
 ## Table of Contents
@@ -57,7 +59,7 @@ The project is divided into the following modules:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/chip8-emulator.git
+   git clone https://github.com/zerootoad/chip8-emulator.git
    cd chip8-emulator
    ```
 2. Build the project:
