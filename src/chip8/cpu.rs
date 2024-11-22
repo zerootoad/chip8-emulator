@@ -1,7 +1,7 @@
 use crate::chip8::opcodes::Opcode;
 use crate::chip8::{display, memory, utils::rand_byte};
 
-use super::memory::FONTSET_ADDR_INIT;
+use super::memory::{FONTSET, FONTSET_ADDR_INIT};
 
 #[derive(Debug)]
 pub struct Chip8 {
@@ -13,8 +13,8 @@ pub struct Chip8 {
     pub sp: u8,
     pub dt: u8,
     pub st: u8,
-    pub keys: [u8; 16],
-    pub display: [u32; 64 * 32],
+    pub keys: [bool; 16],
+    pub display: [bool; 64 * 32],
     pub opcode: u16,
 }
 
@@ -29,8 +29,8 @@ impl Chip8 {
             sp: 0,
             dt: 0,
             st: 0,
-            keys: [0; 16],
-            display: [0; 64 * 32],
+            keys: [false; 16],
+            display: [false; 64 * 32],
             opcode: 0,
         }
     }
@@ -57,8 +57,8 @@ impl Chip8 {
         memory::load_rom(&mut self.ram, filename);
     }
 
-    pub fn load_fontset(&mut self, fontset: &[u8]) {
-        memory::load_fontset(&mut self.ram, fontset);
+    pub fn load_fontset(&mut self) {
+        memory::load_fontset(&mut self.ram, &FONTSET);
     }
 
     pub fn cycle(&mut self) {
@@ -66,10 +66,10 @@ impl Chip8 {
             (self.ram[self.pc as usize] as u16) << 8 | self.ram[self.pc as usize + 1] as u16;
         self.pc += 2;
 
-        println!("Executing opcode: {:#04x}", self.opcode);
+        // println!("Executing opcode: {:#04x}", self.opcode);
 
         if let Some(decoded) = self.decode_opcode(self.opcode) {
-            println!("Executing opcode (decoded): {:#?}", decoded);
+            // println!("Executing opcode (decoded): {:#?}", decoded);
             self.execute(decoded);
         } else {
             panic!("Unknown opcode: {:#04x}", self.opcode);
@@ -83,8 +83,8 @@ impl Chip8 {
         }
     }
 
-    pub fn emulate(&mut self, title: &str) {
-        display::emulate(title, self);
+    pub fn emulate(&mut self, title: &str, delay: u64) {
+        display::emulate(title, delay, self);
     }
 
     fn decode_opcode(&self, opcode: u16) -> Option<Opcode> {
@@ -142,15 +142,15 @@ impl Chip8 {
     // https://austinmorlan.com/posts/chip8_emulator/#the-instructions
     fn execute(&mut self, opcode: Opcode) {
         match opcode {
-            Opcode::OP00E0 => self.display = [0; 64 * 32],
+            Opcode::OP00E0 => self.display = [false; 64 * 32],
             Opcode::OP00EE => {
-                println!("Stack Pointer: {}, Stack: {:?}", self.sp, self.stack);
+                // println!("Stack Pointer: {}, Stack: {:?}", self.sp, self.stack);
                 let nnn = self.pop();
 
                 self.pc = nnn;
             }
             Opcode::OP1NNN => {
-                println!("Stack Pointer: {}, Stack: {:?}", self.sp, self.stack);
+                // println!("Stack Pointer: {}, Stack: {:?}", self.sp, self.stack);
                 let nnn = self.opcode & 0xFFF;
 
                 self.pc = nnn;
@@ -204,8 +204,8 @@ impl Chip8 {
                 let vx = (self.opcode & 0xF00) >> 8;
                 let kk = self.opcode & 0xFF;
 
-                println!("OP7XKK vx reg: {}", self.reg[vx as usize]); // 43
-                println!("OP7XKK kk reg: {}", kk); // 255
+                // println!("OP7XKK vx reg: {}", self.reg[vx as usize]); // 43
+                // println!("OP7XKK kk reg: {}", kk); // 255
                 self.reg[vx as usize] = self.reg[vx as usize].wrapping_add(kk as u8)
             }
             Opcode::OP8XY0 => {
@@ -248,8 +248,8 @@ impl Chip8 {
                 let (newvx, borrow) = self.reg[vx as usize].overflowing_sub(self.reg[vy as usize]);
                 self.reg[0xF] = if borrow { 0 } else { 1 };
 
-                println!("OP8XY5 vx: {}", self.reg[vx as usize]);
-                println!("OP8XY5 vy: {}", self.reg[vy as usize]);
+                // println!("OP8XY5 vx: {}", self.reg[vx as usize]);
+                // println!("OP8XY5 vy: {}", self.reg[vy as usize]);
                 self.ram[vx as usize] = newvx;
             }
             Opcode::OP8XY6 => {
@@ -314,10 +314,10 @@ impl Chip8 {
                         let spixel = (sprite_byte >> (7 - btindex)) & 1;
 
                         if spixel == 1 {
-                            if self.display[pindex] == 0xFFFFFFFF {
+                            if self.display[pindex] == true {
                                 self.reg[0xF] = 1;
                             }
-                            self.display[pindex] ^= 0xFFFFFFFF;
+                            self.display[pindex] ^= true;
                         }
                     }
                 }
@@ -326,7 +326,7 @@ impl Chip8 {
                 let vx = (self.opcode & 0xF00) >> 8;
 
                 let key = self.reg[vx as usize];
-                if self.keys[key as usize] == 0xFF {
+                if self.keys[key as usize] {
                     self.pc += 2;
                 }
             }
@@ -334,7 +334,7 @@ impl Chip8 {
                 let vx = (self.opcode & 0xF00) >> 8;
 
                 let key = self.reg[vx as usize];
-                if self.keys[key as usize] != 0xFF {
+                if !self.keys[key as usize] {
                     self.pc += 2;
                 }
             }
@@ -348,7 +348,7 @@ impl Chip8 {
 
                 for i in 0..self.keys.len() {
                     if i != (self.keys.len() - 1) {
-                        if self.keys[i] == 0xFF {
+                        if self.keys[i] {
                             self.reg[vx as usize] = i as u8;
                             break;
                         }

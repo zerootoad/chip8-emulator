@@ -11,7 +11,8 @@ fn main() {
     */
 
     let mut chip8 = Chip8::new();
-    chip8.load_rom("src/roms/maze.ch8");
+    chip8.load_fontset();
+    chip8.load_rom("src/roms/tetris.ch8");
 
-    chip8.emulate("chip8 emulator");
+    chip8.emulate("chip8 emulator", 32);
 }
